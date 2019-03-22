@@ -27,6 +27,11 @@ namespace RFIDGateSystem.Forms
             InitializeComponent();
 
             sqlPassword = new CredentialsMgr().SqlDbPass;
+
+#if DEBUG
+            tbUserName.Text = "root";
+            tbPassword.Text = "123456";
+#endif
         }
 
         private void btnLogin_Click(object sender, EventArgs e)
@@ -34,7 +39,7 @@ namespace RFIDGateSystem.Forms
             try
             {
                 //Make connection parameters
-                sqlConnection.ConnectionString = "server=localhost; database=login; username=root; password=" + sqlPassword;
+                sqlConnection.ConnectionString = "server=localhost; database=login; username=root; password=";
 
                 string query = "SELECT * from login"; //Select all columns from the LOGIN table
                 var sqlCommand = new MySqlCommand(query, sqlConnection); //Sets the query to the sql command
@@ -48,7 +53,7 @@ namespace RFIDGateSystem.Forms
                     reader.Read();
 
                     username = reader["uname"].ToString();
-                    password = reader["password"].ToString();
+                    password = reader["pword"].ToString();
 
                     if (tbUserName.Text == username)
                     {

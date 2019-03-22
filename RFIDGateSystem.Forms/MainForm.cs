@@ -10,58 +10,83 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.IO.Ports;
+using MySql.Data.MySqlClient;
+using RFIDGateSystem.Forms.Classes;
 
 namespace RFIDGateSystem.Forms
 {
     public partial class MainForm : Form
     {
+        #region Variables
+        DateTime dateTime;
+        Array ports;
+        Array ports2;
+        private string readBuffer;
         const string rfidKey = "1Fog66";
         string data;
-        Array Ports;
-        Array ports2;
         int[] baudRates = new int[] { 9600, 19200, 38400, 57600, 115200 };
-        DateTime dateTime;
-        SqlConnection sqlCon;
-        string sId1;
-        string sId2;
-        string query;
+        private string serial;
         bool isConnected;
         delegate void SetTextCallback(string text);
+        #endregion
 
         public MainForm()
         {
             InitializeComponent();
+        }
 
+        private void MainForm_Load(object sender, EventArgs e)
+        {
             isConnected = false;
 
             LoadComPorts();
 
             LoadBaudRates();
+
+            DisableButtons();
+
+            CheckLogsDirectory();
+
+            SetTimeAndDate();
+        }
+
+        private void SetTimeAndDate()
+        {
+            lblTime.Text = DateTime.Now.ToLongTimeString();
+            lblDate.Text = DateTime.Now.ToLongDateString();
+        }
+
+        private void CheckLogsDirectory()
+        {
+            var drives = DriveInfo.GetDrives();
+            Debug.WriteLine(drives[0]);
+
+            var folderPath = drives[0] + @"RFIDLogs\";
+
+            if (!Directory.Exists(folderPath))
+            {
+                //Create directory
+                Directory.CreateDirectory(folderPath);
+            }
+        }
+
+        private void DisableButtons()
+        {
+            btnGenerate.Enabled = btnClear.Enabled = false;
         }
 
         private void ChangeButtonState(bool isConnected)
         {
+            Debug.WriteLine(isConnected);
+
             if (isConnected)
             {
                 Disconnect();
-
-                btnConnect.Text = "Connect";
-
-                isConnected = false;
-
-                // Enable state of comboboxes
-                cbPort1.Enabled = cbPort2.Enabled = cbBaudRate.Enabled = true;
             }
             else
             {
                 Connect();
-
-                btnConnect.Text = "Disconnect";
-
-                isConnected = true;
-
-                // Disable state of comboboxes
-                cbPort1.Enabled = cbPort2.Enabled = cbBaudRate.Enabled = false;
             }
         }
 
@@ -69,23 +94,23 @@ namespace RFIDGateSystem.Forms
         {
             if (cbPort1.SelectedItem != null || cbPort2.SelectedItem != null)
             {
-                if (!serialPort1.IsOpen || !serialPort2.IsOpen)
+                if (!readerPort.IsOpen)
                 {
                     try
                     {
-                        serialPort1.PortName = cbPort1.Text;
-                        serialPort1.BaudRate = Convert.ToInt32(cbBaudRate.Text);
-                        serialPort1.Parity = System.IO.Ports.Parity.None;
-                        serialPort1.StopBits = System.IO.Ports.StopBits.One;
-                        serialPort1.DataBits = 8;
-                        serialPort1.Open();
+                        readerPort.PortName = cbPort1.Text;
+                        readerPort.BaudRate = Convert.ToInt32(cbBaudRate.Text);
+                        readerPort.Parity = System.IO.Ports.Parity.None;
+                        readerPort.StopBits = System.IO.Ports.StopBits.One;
+                        readerPort.DataBits = 8;
+                        readerPort.Open();
 
-                        serialPort2.PortName = cbPort2.Text;
-                        serialPort2.BaudRate = Convert.ToInt32(cbBaudRate.Text);
-                        serialPort2.Parity = System.IO.Ports.Parity.None;
-                        serialPort2.StopBits = System.IO.Ports.StopBits.One;
-                        serialPort2.DataBits = 8;
-                        serialPort2.Open();
+
+                        btnConnect.Text = "Disconnect";
+
+                        isConnected = true;
+
+                        cbPort1.Enabled = cbPort2.Enabled = cbBaudRate.Enabled = false;
                     }
                     catch (Exception ex)
                     {
@@ -96,6 +121,8 @@ namespace RFIDGateSystem.Forms
             else
             {
                 MessageBox.Show(this, "Select a valid COM port!", "", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+
+                cbPort1.Enabled = cbPort2.Enabled = cbBaudRate.Enabled = true;
             }
         }
 
@@ -103,8 +130,13 @@ namespace RFIDGateSystem.Forms
         {
             try
             {
-                serialPort1.Close();
-                serialPort2.Close();
+                readerPort.Close();
+
+                btnConnect.Text = "Connect";
+
+                isConnected = false;
+
+                cbPort1.Enabled = cbPort2.Enabled = cbBaudRate.Enabled = true;
             }
             catch (Exception ex)
             {
@@ -125,12 +157,12 @@ namespace RFIDGateSystem.Forms
 
         private void LoadComPorts()
         {
-            Ports = System.IO.Ports.SerialPort.GetPortNames();
+            ports = System.IO.Ports.SerialPort.GetPortNames();
             ports2 = System.IO.Ports.SerialPort.GetPortNames();
 
-            if (Ports.Length != 0 || ports2.Length != 0)
+            if (ports.Length != 0 || ports2.Length != 0)
             {
-                foreach (var p in Ports)
+                foreach (var p in ports)
                 {
                     cbPort1.Items.Add(p);
                 }
@@ -153,7 +185,7 @@ namespace RFIDGateSystem.Forms
             }
             else
             {
-                // SHow error in finding COM ports!
+                // SHow error in finding COM ports
             }
         }
 
@@ -170,44 +202,124 @@ namespace RFIDGateSystem.Forms
             {
                 e.Cancel = true;
             }
+            else
+            {
+                new LoginForm().Show();
+            }
         }
 
         private void serialPort1_DataReceived(object sender, System.IO.Ports.SerialDataReceivedEventArgs e)
         {
-            ReceivedTextHandler(serialPort1.ReadExisting());
+            ReceivedTextHandler(readerPort.ReadExisting());
+
+            if (readerPort.IsOpen)
+            {
+                try
+                {
+                    readBuffer = readerPort.ReadExisting();
+                    Invoke(new EventHandler(DoUpdate));
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine(ex.Message);
+                }
+            }
+        }
+
+        private void DoUpdate(object sender, EventArgs e)
+        {
+
         }
 
         private void ReceivedTextHandler(string received)
         {
-            if (this.rtbData.InvokeRequired)
+            dateTime = DateTime.Now;
+
+            if (rtbData.InvokeRequired)
             {
-                SetTextCallback stcb = new SetTextCallback(ReceivedTextHandler);
+                var stcb = new SetTextCallback(ReceivedTextHandler);
                 this.Invoke(stcb, new object[] { (received) });
             }
             else
             {
-                dateTime = DateTime.Now;
-                this.rtbData.Text = $"\t{ received }\t{ dateTime.ToString("MMM,d,yyy h:mm:ss tt") }\n";
-                rtbData.SelectionStart = rtbData.TextLength;
-                rtbData.ScrollToCaret();
-                rtbData.Focus();
+                serial = received.Substring(0, 4);
 
-                if (received == rfidKey)
+                var sqlConnection = new MySqlConnection();
+                sqlConnection.ConnectionString = "server=localhost; database=vehicles; username=root; password=";
+                var query = "SELECT * from car_desc where sid=@serial";
+                var command = new MySqlCommand(query, sqlConnection);
+                command.Parameters.Add(new SqlParameter("@serial", serial));
+                sqlConnection.Open();
+
+                var reader = command.ExecuteReader();
+                var vehicle = new Vehicle();
+
+                if (reader.HasRows)
                 {
-                    serialPort2.RtsEnable = true;
+                    reader.Read();
+                    vehicle.Id = reader["sid"] as string;
+                    vehicle.PlateNum = reader["plate_num"] as string;
+                    vehicle.Color = reader["color"] as string;
+                    vehicle.Make = reader["make"] as string;
+                    vehicle.Model = reader["model"] as string;
+                    vehicle.Owner = reader["owned_by"] as string;
+                }
+
+                if (serial == vehicle.Id)
+                {
+                    rtbData.Text = received;
+                    rtbDetails.Text += String.Format("----> {0} --- {1} {2} {3} : {4}", vehicle.PlateNum, vehicle.Color, vehicle.Make, vehicle.Model, vehicle.Owner);
+                    rtbDetails.SelectionStart = rtbData.TextLength;
+                    rtbDetails.ScrollToCaret();
+                    rtbDetails.Focus();
+
+                    rtbData.Text += String.Format("----> {0} --- {1} \n", received, dateTime);
+                    rtbData.SelectionStart = rtbData.TextLength;
+                    rtbData.ScrollToCaret();
+                    rtbData.Focus();
+
+                    Beep();
+
+                    if (string.IsNullOrEmpty(readBuffer))
+                    {
+                        controllerPort.Open();
+                        controllerPort.Write("0");
+                        controllerPort.Close();
+                    }
+                    else if (controllerPort.IsOpen)
+                    {
+                        controllerPort.Write("1"); //Send Logic 1 signal voltage
+                        controllerPort.Close();
+                        serial = "";
+                        received = "";
+                    }
+                    else
+                    {
+                        controllerPort.Open();
+                        controllerPort.Write("1");
+                        controllerPort.Close();
+                        serial = "";
+                        received = "";
+                    }
+                    //I do not know what these textlenght and scroll focus meant.. needs to check
                 }
                 else
                 {
-                    serialPort2.RtsEnable = false;
+                    //Vehicle not found
                 }
             }
         }
 
+        private void Beep()
+        {
+            throw new NotImplementedException();
+        }
+
         private void cbPort1_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (!serialPort1.IsOpen)
+            if (!readerPort.IsOpen)
             {
-                serialPort1.PortName = cbPort1.Text;
+                readerPort.PortName = cbPort1.Text;
             }
             else
             {
@@ -217,9 +329,9 @@ namespace RFIDGateSystem.Forms
 
         private void cbBaudRate_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (!serialPort1.IsOpen)
+            if (!readerPort.IsOpen)
             {
-                serialPort1.BaudRate = Convert.ToInt32(cbBaudRate.Text);
+                readerPort.BaudRate = Convert.ToInt32(cbBaudRate.Text);
             }
             else
             {
