@@ -13,7 +13,7 @@ using System.Windows.Forms;
 
 namespace RFIDGateSystem.Forms
 {
-    public partial class frmMain : Form
+    public partial class MainForm : Form
     {
         const string rfidKey = "1Fog66";
         string data;
@@ -28,7 +28,7 @@ namespace RFIDGateSystem.Forms
         bool isConnected;
         delegate void SetTextCallback(string text);
 
-        public frmMain()
+        public MainForm()
         {
             InitializeComponent();
 

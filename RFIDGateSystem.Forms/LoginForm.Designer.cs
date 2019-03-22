@@ -1,6 +1,6 @@
 ﻿namespace RFIDGateSystem.Forms
 {
-    partial class frmLogin
+    partial class LoginForm
     {
         /// <summary>
         /// Required designer variable.
@@ -80,15 +80,15 @@
             // 
             // btnLogin
             // 
-            this.btnLogin.Location = new System.Drawing.Point(168, 171);
+            this.btnLogin.Location = new System.Drawing.Point(98, 173);
             this.btnLogin.Name = "btnLogin";
-            this.btnLogin.Size = new System.Drawing.Size(100, 25);
+            this.btnLogin.Size = new System.Drawing.Size(170, 25);
             this.btnLogin.TabIndex = 5;
             this.btnLogin.Text = "Log In";
             this.btnLogin.UseVisualStyleBackColor = true;
             this.btnLogin.Click += new System.EventHandler(this.btnLogin_Click);
             // 
-            // frmLogin
+            // LoginForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
@@ -99,7 +99,7 @@
             this.Controls.Add(this.label3);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.label1);
-            this.Name = "frmLogin";
+            this.Name = "LoginForm";
             this.Text = "Log In";
             this.ResumeLayout(false);
             this.PerformLayout();

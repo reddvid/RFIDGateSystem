@@ -1,6 +1,6 @@
 ﻿namespace RFIDGateSystem.Forms
 {
-    partial class frmMain
+    partial class MainForm
     {
         /// <summary>
         /// Required designer variable.
@@ -180,7 +180,7 @@
             this.menuStrip1.Text = "Register";
             this.menuStrip1.ItemClicked += new System.Windows.Forms.ToolStripItemClickedEventHandler(this.menuStrip1_ItemClicked);
             // 
-            // frmMain
+            // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
@@ -188,8 +188,8 @@
             this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.groupBox1);
             this.Controls.Add(this.menuStrip1);
-            this.Name = "frmMain";
-            this.Text = "Logging - RFID Gate System";
+            this.Name = "MainForm";
+            this.Text = "LOGS - RFID Gate System";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.frmMain_FormClosing);
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
