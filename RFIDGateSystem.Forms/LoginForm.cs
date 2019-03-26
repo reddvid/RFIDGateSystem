@@ -89,5 +89,19 @@ namespace RFIDGateSystem.Forms
                 Debug.WriteLine(ex.Message);
             }
         }
+
+        private void LoginForm_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (Application.MessageLoop)
+            {
+                // WinForms app
+                Application.Exit();
+            }
+            else
+            {
+                // Console app
+                Environment.Exit(1);
+            }
+        }
     }
 }
